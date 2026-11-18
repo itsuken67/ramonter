@@ -1,0 +1,19 @@
+BOOT_SECTOR file 'boot.bin'
+
+FAT1 db 0xF0, 0xFF, 0xFF, 0x03, 0x40, 0x00, 0x00, 0xf0, 0xff 
+times 512 * 9 - 9 db 0
+
+FAT2 db 0xF0, 0xFF, 0xFF, 0x03, 0x40, 0x00, 0x00, 0xf0, 0xff 
+times 512 * 9 - 9 db 0
+
+ROOT_DIR db 'KERNEL  BIN', 0x20
+times 14 db 0
+KERNEL_CLUSTER dw 2
+dd KERNEL_SIZE
+times 512 * 14 - 0x20 db 0
+
+
+KERNEL file 'kernel.bin'
+KERNEL_SIZE = $ - KERNEL
+
+times 512 * 80 * 2 * 18 - $ db 0

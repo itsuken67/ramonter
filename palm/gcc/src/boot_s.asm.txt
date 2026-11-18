@@ -1,0 +1,140 @@
+[bits 16]
+[org 0x7C00]
+section .text
+;extern _kernel_main
+global _start
+
+_start:
+    	cli
+    	xor 		ax, ax
+    	mov 		ds, ax
+    	mov 		es, ax
+    	mov 		ss, ax
+    	mov 		sp, 0x7C00
+
+	
+	mov 		al, 3
+	int 		10h
+	mov 		dh, 0
+	mov 		dl, 0
+	xor 		bh, bh
+	int 		10h
+
+;mov ax, 0x4F02       ; Функция VBE "установить видеорежим"
+ ;   mov bx, 0x4115       | 0x4000  ; Режим 0x115 (800x600x32) + LFB
+ ;   int 0x10
+
+
+
+
+  ; Загрузка ядра с диска (пример для 1 сектора)
+    	mov 		ax, 0FFFFh
+    	mov 		es, ax
+    	mov 		ah, 0x02
+    	mov 		al, 18      ; Количество секторов
+    	mov 		ch, 1      ; Цилиндр
+    	mov 		cl, 1     ; Сектор (следующий после загрузчика)
+    	mov 		dh, 0      ; Головка
+    	mov 		bx, 0x0010 ; Адрес загрузки (ES:BX = 0xFFFF:0x0010)	
+
+    	int 0x13
+
+    ; Переход в 32-битный режим (упрощённо)
+    	lgdt 		[gdt_descriptor]
+    	mov 		eax, cr0
+    	or	 	eax, 1
+    	mov 		cr0, eax
+
+enable_sse:
+    	mov	 	eax, cr0
+    	and 		ax, 0xFFFB  ; Clear CR0.EM
+    	or 		ax, 0x2      ; Set CR0.MP
+    	mov 		cr0, eax
+    	mov 		eax, cr4
+    	or 		ax, 0x600    ; Set CR4.OSFXSR | CR4.OSXMMEXCPT
+    	mov 		cr4, eax
+
+protected_mode:
+    ; Настроить сегменты данных (DS, ES, SS) на дескриптор данных из GDT
+    	mov 		ax, 0x10    ; Селектор дескриптора данных (смещение 16 байт в GDT)
+    	mov 		ds, ax
+    	mov 		es, ax
+    	mov 		fs, ax
+    	mov 		gs, ax
+    	mov 		ss, ax
+
+	mov 		eax, cr0
+	and 		eax, ~1
+	mov 		cr0, eax
+	jmp 		0000:unreal_mode
+
+unreal_mode:
+	    ; Загрузка ядра с диска (пример для 1 сектора)
+    	xor		ax, ax
+    	mov 		es, ax
+    	mov 		ah, 0x02
+    	mov 		al, 17      ; Количество секторов
+    	mov 		ch, 0      ; Цилиндр
+    	mov 		cl, 2      ; Сектор (следующий после загрузчика)
+    	mov 		dh, 0      ; Головка
+    	mov 		ebx, 0x100000 ; Адрес загрузки (ES:BX = 0xFFFF:0x0010)	
+
+; Загрузка ядра с диска (пример для 1 сектора)
+    	mov 		ah, 0x02
+    	mov 		al, 18      ; Количество секторов
+    	mov 		ch, 0      ; Цилиндр
+    	mov 		cl, 1      ; Сектор (следующий после загрузчика)
+    	mov 		dh, 1      ; Головка
+    	mov 		ebx, 0x100000 + 512 * 17 ; Адрес загрузки (ES:BX = 0xFFFF:0x0010)
+
+    	int 0x13
+
+	mov 		eax, cr0
+    	or	 	eax, 1
+    	mov 		cr0, eax
+	jmp		0x8:back_to_protected_mode
+
+back_to_protected_mode:
+    	mov 		esp, 0x90000  ; Стек в 576 КБ
+	mov 		ebp, esp
+    ; Передать управление в C-код
+
+	
+	jmp 		dword 0x8:0x100000 + KERNEL_MAIN_OFFSET ;_kernel_main    ;
+	cli
+	hlt
+
+
+
+; Сама GDT
+gdt_start:
+gdt_null:  ; Нулевой дескриптор (обязательный)
+   	dd 		0
+    	dd 		0
+
+gdt_code:  ; Сегмент кода
+    	dw 		0xFFFF     ; Limit (0-15)
+    	dw 		0x0000     ; Base (0-15)
+    	db 		0x00       ; Base (16-23)
+    	db 		10011010b  ; P=1, DPL=00, S=1, Type=1010 (Code, Exec/Read)
+    	db 		11001111b  ; G=1, D/B=1, L=0, Limit (16-19)=1111
+    	db 		0x00       ; Base (24-31)
+
+gdt_data:  ; Сегмент данных
+    	dw 		0xFFFF     ; Limit
+    	dw 		0x0000     ; Base
+    	db 		0x00       ; Base
+    	db 		10010010b  ; Type=0010 (Data, Read/Write)
+    	db 		11001111b  ; Флаги
+    	db 		0x00       ; Base
+
+gdt_end:
+
+gdt_descriptor:
+    	dw 		gdt_end - gdt_start - 1  ; Размер GDT
+    	dd 		gdt_start                 ; Адрес GDT
+	
+	
+
+times 510 - ($ - $$) db 0
+dw 0xAA55

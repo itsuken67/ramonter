@@ -1,0 +1,154 @@
+MOUSE_FLAGS db 0
+MOUSE_X dw 	160
+MOUSE_Y dw 	100
+MOUSE_BYTE db 0
+DELTA_X_STR db 0, 0, 0, 0, 0, 0, 0, 0
+DELTA_Y_STR db 0, 0, 0, 0, 0, 0, 0, 0
+DELTA_BEG db 0 ; ### THE LAST ALTERED BYTE ###
+
+mouse_irq:
+	pusha
+	call		wait_output
+	jz		mouse_end ; ##### NO DATA FOR MOUSE #####
+	in		al, 60h
+	cmp 	[MOUSE_BYTE], 2
+	jz		mouse_byte_2
+	cmp		[MOUSE_BYTE], 1
+	jz		mouse_byte_1
+	
+mouse_byte_0: ; ##### FLAGS #####
+	mov		[MOUSE_FLAGS], al
+	inc		[MOUSE_BYTE]
+	jmp		mouse_end
+mouse_byte_1: ; ##### DELTA_X #####
+	movzx	bx, [DELTA_BEG]
+	mov		[bx + DELTA_X_STR], al 
+	inc		[MOUSE_BYTE]
+	jmp		mouse_end
+
+mouse_byte_2: ; ##### DELTA_Y #####
+
+	movzx	bx, [DELTA_BEG]
+	mov		[bx + DELTA_Y_STR], al 
+	mov		[MOUSE_BYTE], 0
+	call		mouse_cursor
+	
+
+mouse_end:
+	mov		al, 20h
+	out		20h, al
+	out		40h, al
+	popa
+	iret
+
+mc_min = 0
+
+mouse_cursor:	
+; ##### DELTA_BEG WITHIN THE SCOPE 0-3 #####
+	mov		dx, [MOUSE_X]
+	inc		[DELTA_BEG]
+	test		[DELTA_BEG], 11111000b
+	jz		mc_delta_lss4
+	mov		[DELTA_BEG], 0
+mc_delta_lss4:
+
+	mov		eax, dword [DELTA_X_STR] ; ### SUMMING LAST 4 X DELTAS ###
+	mov		bx, ax
+	add		bl, bh
+	shr		eax, 16
+	add		al, ah
+	add		al, bl
+	mov		ecx, dword [DELTA_X_STR + 4]
+	mov		bx, cx
+	add		bl, bh
+	shr		ecx, 16
+	add		cl, ch
+	add		cl, bl
+	movsx	ax, al
+	movsx	cx, cl
+	add		ax, cx
+	sar		ax, 4
+	; #### IS NEGATIVE ####
+	js		mouse_cursor_Xnegative
+	; ## POSITIVE ##
+	sub		ax, mc_min
+	jle		mcur_XSKIP ; ### IF LESS THAN 4 OR EQUAL TO IT ###
+	jmp		mcur_addDeltaX
+mouse_cursor_Xnegative:
+	; ## NEGATIVE ##
+	add		ax, mc_min
+	jbe		mcur_XSKIP 
+mcur_addDeltaX:
+	add		dx, ax ; #### DX IS NOW NEW MOUSE X ####
+mcur_XSKIP: ; #### GOING THERE IS DELTA X IS TOO SMALL ####
+
+
+	mov		ax, [MOUSE_Y]
+	mov		ecx, dword [DELTA_Y_STR] ; ### SUMMING LAST 4 X DELTAS ###
+	mov		bx, cx
+	add		bl, bh
+	shr		ecx, 16
+	add		cl, ch
+	add		cl, bl
+	push		dx ; #### NOT TO LOSE DELTA X ####
+	mov		edx, dword [DELTA_X_STR + 4]
+	mov		bx, dx
+	add		bl, bh
+	shr		edx, 16
+	add		dl, dh
+	movsx	cx, cl
+	movsx	dx, dl
+	add		cx, dx
+	sar		cx, 4
+	; #### IS NEGATIVE ####
+	js		mouse_cursor_Ynegative
+	; ## POSITIVE ##
+	sub		cx, mc_min
+	jle		mouseYLlsOK ; ### IF LESS THAN 4 OR EQUAL TO IT ###
+	jmp		mcur_addDeltaY
+mouse_cursor_Ynegative:
+	; ## NEGATIVE ##
+	add		cx, mc_min
+	jbe		mouseYLlsOK ; #### IF DELTA Y IS TOO SMALL THEN WE SKIP CHECKING FOR BOUNDARIES #### 
+mcur_addDeltaY:
+	sub		ax, cx
+	
+
+; #### NOW AX IS NEXT MOUSE Y AND DX HAS MOUSE X ####
+	
+
+; #### MOUSE Y ####
+	cmp		ax, 199
+	jle		mouseYRlsOK
+	mov		ax, 199	
+	mouseYRlsOK:
+	test		ax, 0F000h
+	jz 		mouseYLlsOK
+	xor		ax, ax	
+mouseYLlsOK:
+
+; #### MOUSE X ####
+	cmp		dx, 319
+	jle		mouseXRlsOK
+	mov		dx, 319
+mouseXRlsOK:
+	test		dx, 0F000h
+	jz 		mouseXLlsOK
+	xor		dx, dx
+mouseXLlsOK:
+
+
+
+	test		[MOUSE_FLAGS], 1 ; #### CHECK FOR LEFT BUTTON ####
+	jnz		mouse_no_left_button
+	call		pixel	
+mouse_no_left_button:
+	mov		[MOUSE_X], dx
+	mov		[MOUSE_Y], ax
+	mov		[PIXEL_X], dx
+	mov		[PIXEL_Y], ax
+	call 		pixel
+.mouse_stop_draw:
+	ret
+
+	jmp $
