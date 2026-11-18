@@ -1,0 +1,470 @@
+org 7c00h
+
+start:
+cli
+xor ax, ax
+mov ds, ax
+mov es, ax
+mov ss, ax
+mov sp, 07c00h
+sti
+
+mov al, 3
+int 10h
+mov dh, 0
+mov dl, 0
+xor bh, bh
+int 10h
+
+
+push 0x50
+pop es
+
+mov dx, 0 ;disk A, head 0 (dl - disk, dh - head)
+mov ch, 0 ;10bit - cyl, 6bit - sector
+mov cl, 2 ;sector
+mov al, 7
+xor bx, bx
+
+mov ah, 02h
+int 13h
+
+mov dl, 0
+mov dh, 1
+mov bx, 0x0E00
+mov ch, 0
+mov cl, 1
+mov al, 8
+
+mov ah, 02h
+int 13h
+
+
+jmp 0080:0000
+jmp $
+
+fd db 'error!'
+
+times 510 - ($-7c00h) db 0
+db 055h, 0AAh ;ДАЛЬШЕ ЗАГРУЗЧИК НЕ ИДЁТ
+
+org 0x500
+
+db 66h, 83h, 11000000b, 0Ah
+db 66h, 83h, 11001000b, 0Ah
+db 66h, 83h, 11010000b, 0Ah
+db 66h, 83h, 11011000b, 0Ah
+db 66h, 83h, 11100000b, 0Ah
+db 66h, 83h, 11101000b, 0Ah
+db 66h, 83h, 11110000b, 0Ah
+db 66h, 83h, 11111000b, 0Ah
+
+
+jmp home
+
+const_string db 'Ramonter!', 0
+
+length:
+	mov		dword [bx + si + 4], 0
+	mov 		eax, [bx + si]
+	mov 		edx, [bx + si+ 4]
+	add 		eax, edx
+	push 	bx
+	mov 		bx, ax
+	mov 		al, [bx]
+	pop	 	bx
+	test 		al, al	
+	jz 		LENGTH_TIL_END
+	LENGTH_TIL:
+	inc 		dword [bx+si+4]
+	mov 		eax, [bx + si]
+	mov 		edx, [bx + si+ 4]
+	add 		eax, edx
+	push 	bx
+	mov 		bx, ax
+	mov 		al, [bx]
+	pop	 	bx
+	test 		al, al	
+	jnz 		LENGTH_TIL
+	LENGTH_TIL_END:
+	mov 		eax, [bx + si+ 4]
+	mov 		[bx + si], eax
+	xor 		eax, eax
+	mov 		[bx + si+ 4], eax
+	ret
+
+home:
+	xor 		ax, ax
+	mov 		ds, ax
+	mov 		si, _heap
+	mov		dword [si], 500h
+	mov		dword [si+4], const_string
+	mov 		bx, 4
+	call 		length
+	hlt
+
+_heap:
+dd 		500h 
+dd 8 dup	0
+org 0
+
+;		       0	    1		     2
+; (смещение: нет - короткое - дальнее)
+;тип-смещение-функция
+;000
+		mov		dword [si], eax
+times 16 - ($ mod 16) db 077h
+
+;001
+		mov		dword [bx + si], eax
+times 16 - ($ mod 16) db 077h
+
+;010
+		mov		dword [si + 10], eax
+times 16 - ($ mod 16) db 077h
+
+;011
+		mov		dword [bx+ si + 10], eax
+times 16 - ($ mod 16) db 077h
+
+;020
+		mov		dword [si + 1345], eax
+times 16 - ($ mod 16) db 077h
+
+;021
+		mov		dword [bx + si + 1345], eax
+times 16 - ($ mod 16) db 077h
+
+;100
+		mov		word [si], ax
+times 16 - ($ mod 16) db 077h
+
+;101
+		mov		word [bx + si], ax
+times 16 - ($ mod 16) db 077h
+
+;110
+		mov		word [si + 10], ax
+times 16 - ($ mod 16) db 077h
+
+;111
+		mov		word [bx + si + 10], ax
+times 16 - ($ mod 16) db 077h
+
+;120
+		mov		word [si + 1345], ax
+times 16 - ($ mod 16) db 077h
+
+;121
+		mov		word [bx + si + 1345], ax
+times 16 - ($ mod 16) db 077h
+
+;200
+		mov		byte [si], al
+times 16 - ($ mod 16) db 077h
+
+;201
+		mov		byte [bx + si], al
+times 16 - ($ mod 16) db 077h
+
+;210
+		mov		byte [si + 10], al
+times 16 - ($ mod 16) db 077h
+
+;211
+		mov		byte [bx + si + 10], al
+times 16 - ($ mod 16) db 077h
+
+;220
+		mov		byte [si + 1345], al
+times 16 - ($ mod 16) db 077h
+
+;221
+		mov		byte [bx + si + 1345], al
+times 16 - ($ mod 16) db 077h
+
+;инициализация по регистру done!
+;инициализация по значению done!
+;инициализация по объекту done!
+;произведение операции над объектом и константой (_obj, _byobj)
+;произведение операции над двумя объектами (_2obj)
+;запись по объекту
+;запись по адресу
+;вызов функции
+;работа с циклами (until, while, cycle)
+;
+;булева переменная о наличии значения в регистре должна меняться на 1 после каждой выполненной операции вычисления и на 0 после любой другой операции
+; таким образом, во время выполнения операции вычисления значение из регистра будет заноситься в кучу, если значение переменной равно 1
+; идея: добавить в файл с байт кодом массив с названиями переменных, чтобы на них можно было ссылаться во время обработки кода на языке ассемблера
+; мы можем загрузить весь массив целиком, и по ходу выполнения программы во время иницализации переменных каждому новому объекту мы будем присваивать смещение в массиве
+; таким образом, во время обработки кода на ассемблере мы можем задать макросы с помощью директивы (название = [bx + si + смещение])
+; либо мы можем заменять название сразу
+
+
+;0000000000007c0d: (                    ): mov dword ptr ds:[bx+si+4], eax ; 66894004
+;0000000000007c11: (                    ): mov dword ptr ds:[bx+si+45], eax ; 6689402d
+;0000000000007c15: (                    ): mov word ptr ds:[bx+si+49], ax ; 894031
+;0000000000007c18: (                    ): mov dword ptr ds:[bx+si+70], eax ; 66894046
+;0000000000007c1c: (                    ): mov word ptr ds:[bx+si+74], ax ; 89404a
+;0000000000007c1f: (                    ): mov word ptr ds:[bx+si+78], ax ; 89404e
+;0000000000007c22: (                    ): mov dword ptr ds:[si+84], eax ; 66894454
+;0000000000007c26: (                    ): add byte ptr ds:[bx+si], al ; 0000
+
+;000
+		mov		dword [si], 12345678h
+times 16 - ($ mod 16) db 077h
+
+;001
+		mov		dword [bx + si], 12345678h
+times 16 - ($ mod 16) db 077h
+
+;010
+		mov		dword [si + 10], 12345678h
+times 16 - ($ mod 16) db 077h
+
+;011
+		mov		dword [bx+ si + 10], 12345678h
+times 16 - ($ mod 16) db 077h
+
+;020
+		mov		dword [si + 1345], 12345678h
+times 16 - ($ mod 16) db 077h
+
+;021
+		mov		dword [bx + si + 1345], 12345678h
+times 16 - ($ mod 16) db 077h
+
+;100
+		mov		word [si], 0ABCDh
+times 16 - ($ mod 16) db 077h
+
+;101
+		mov		word [bx + si], 0ABCDh
+times 16 - ($ mod 16) db 077h
+
+;110
+		mov		word [si + 10], 0ABCDh
+times 16 - ($ mod 16) db 077h
+
+;111
+		mov		word [bx + si + 10], 0ABCDh
+times 16 - ($ mod 16) db 077h
+
+;120
+		mov		word [si + 1345], 0ABCDh
+times 16 - ($ mod 16) db 077h
+
+;121
+		mov		word [bx + si + 1345], 0ABCDh
+times 16 - ($ mod 16) db 077h
+
+;200
+		mov		byte [si], 0FFh
+times 16 - ($ mod 16) db 077h
+
+;201
+		mov		byte [bx + si], 0FFh
+times 16 - ($ mod 16) db 077h
+
+;210
+		mov		byte [si + 10], 0FFh
+times 16 - ($ mod 16) db 077h
+
+;211
+		mov		byte [bx + si + 10], 0FFh
+times 16 - ($ mod 16) db 077h
+
+;220
+		mov		byte [si + 1345], 0FFh
+times 16 - ($ mod 16) db 077h
+
+;221
+		mov		byte [bx + si + 1345], 0FFh
+times 16 - ($ mod 16) db 077h
+
+times 16 db 0
+
+;221
+		xor		eax, eax
+times 16 - ($ mod 16) db 077h
+		mov		al, byte [bx + si + 1345]
+times 16 - ($ mod 16) db 077h
+		mov		ax, word [bx + si + 1345]
+times 16 - ($ mod 16) db 077h
+		mov		eax, dword [bx + si + 1345]
+times 16 - ($ mod 16) db 077h
+
+
+;_obj =
+;8B
+;mov ebx, const
+;operation
+;89
+
+		mov		eax, dword [bx + si + 1345]
+times 16 - ($ mod 16) db 077h
+
+
+times 16 db 0
+;_obj add (0 byte), 123
+
+
+mov		eax, dword [bx + si]
+times 16 - ($ mod 16) db 077h
+
+mov		eax, 123
+times 16 - ($ mod 16) db 077h
+
+mov		ebx, 123
+times 16 - ($ mod 16) db 077h
+
+add		eax, ebx
+times 16 - ($ mod 16) db 077h
+
+sub		eax, ebx
+times 16 - ($ mod 16) db 077h
+
+mul		ebx
+times 16 - ($ mod 16) db 077h
+
+div		ebx
+times 16 - ($ mod 16) db 077h
+
+mov		dword [bx + si + 1], eax
+times 16 - ($ mod 16) db 077h
+
+xor eax, eax
+times 16 - ($ mod 16) db 077h
+
+xor ebx, ebx
+times 16 - ($ mod 16) db 077h
+
+mov		ebx, dword [bx + si + 1345]
+times 16 - ($ mod 16) db 077h
+
+mov		bx, word [bx + si + 1345]
+times 16 - ($ mod 16) db 077h
+
+mov		bl, byte [bx + si + 1345]
+times 16 - ($ mod 16) db 077h
+
+mov		ebx, dword [bx + si + 10]
+times 16 - ($ mod 16) db 077h
+
+mov		bx, word [bx + si + 10]
+times 16 - ($ mod 16) db 077h
+
+mov		bl, byte [bx + si + 10]
+times 16 - ($ mod 16) db 077h
+
+mov		ebx, dword [bx + si]
+times 16 - ($ mod 16) db 077h
+
+mov		bx, word [bx + si]
+times 16 - ($ mod 16) db 077h
+
+mov		bl, byte [bx + si]
+times 16 - ($ mod 16) db 077h
+
+mov		bl, byte [si]
+times 16 - ($ mod 16) db 077h
+
+
+add eax, 10
+times 16 - ($ mod 16) db 077h
+
+add ebx, 10
+times 16 - ($ mod 16) db 077h
+
+add eax, 34
+times 16 - ($ mod 16) db 077h
+
+add eax, 1234h
+times 16 - ($ mod 16) db 077h
+
+add eax, 12345678h
+times 16 - ($ mod 16) db 077h
+
+add eax, ebx
+times 16 - ($ mod 16) db 077h
+
+sub eax, ebx
+times 16 - ($ mod 16) db 077h
+
+and eax, ebx
+times 16 - ($ mod 16) db 077h
+
+or eax, ebx
+times 16 - ($ mod 16) db 077h
+
+xor eax, ebx
+times 16 - ($ mod 16) db 077h
+
+shr eax, cl
+times 16 - ($ mod 16) db 077h
+
+mul ebx
+times 16 - ($ mod 16) db 077h
+
+div ebx
+times 16 - ($ mod 16) db 077h
+
+xor edx, edx
+times 16 - ($ mod 16) db 077h
+
+add eax, 10
+times 16 - ($ mod 16) db 077h
+
+add eax, 1234h
+times 16 - ($ mod 16) db 077h
+
+sub eax, 10
+times 16 - ($ mod 16) db 077h
+
+sub eax, 1234h
+times 16 - ($ mod 16) db 077h
+
+and eax, 10
+times 16 - ($ mod 16) db 077h
+
+and eax, 1234h
+times 16 - ($ mod 16) db 077h
+
+or eax, 10
+times 16 - ($ mod 16) db 077h
+
+or eax, 1234h
+times 16 - ($ mod 16) db 077h
+
+xor eax, 10
+times 16 - ($ mod 16) db 077h
+
+xor eax, 1234h
+times 16 - ($ mod 16) db 077h
+
+shr eax, 0ah
+times 16 - ($ mod 16) db 077h
+ 
+shl eax, 5
+times 16 - ($ mod 16) db 077h
+jno ($+4)
+times 16 - ($ mod 16) db 077h
+mov edx, eax
+times 16 - ($ mod 16) db 077h
+shr eax, 27
+times 16 - ($ mod 16) db 077h
+
+div ebx
+times 16 - ($ mod 16) db 077h
+shl edx, 4
+times 16 - ($ mod 16) db 077h
+or eax, edx
+times 16 - ($ mod 16) db 077h
+and eax, 0FFh
+times 16 - ($ mod 16) db 077h
+e equ [bx+si+5]
+
+mov e, edx
+times 16 - ($ mod 16) db 077h
+e equ [bx+si+6]
+mov ebx, eax

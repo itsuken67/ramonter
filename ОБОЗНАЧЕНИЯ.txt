@@ -1,0 +1,17 @@
+ОБОЗНАЧЕНИЯ:
+db - БАЙТ
+dw - СЛОВО
+WD WD - СЛОВО БАЙТАМИ ЗАДОМ НАПЕРЁД BIG ENDIAN (08D2h = D2 08)
+
+КОМАНДЫ АССЕМБЛЕРА В МАШИННОМ КОДЕ:
+
+ОДИН БАЙТ:
+push ax - 50 
+push cx - 51
+push dx - 52
+push bx - 53
+
+ДВА БАЙТА:
+push db - 6A db
+mov ax, bx - 89 DB
+mov ax, dw - B8 WD WD

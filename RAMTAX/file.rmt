@@ -1,0 +1,27 @@
+$BOOT
+#GET include/notiobase.txt
+$MEAN WIDTH_T 80
+
+func noth ASCIINumber : dword num, ptr word _Str do:
+	until (num = 0) do:
+		equ *_Str = num % 10 + 0x30
+		equ num = num / 10
+	end.
+end.
+
+
+
+
+
+HOME: 
+	init str byte RAM = "Ramonter!"
+	init str 5 byte NUM
+	init dword QQ
+	equ QQ = 34
+	ASCIINumber{QQ, &NUM}
+HEND.
+
+
+# code/from 3 = "tert"
+# 0, x0 - xff, a, b, t, n, v, f, r, "
+

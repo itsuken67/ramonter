@@ -1,0 +1,19 @@
+$BOOT
+# $GET IOBASE.RMT
+
+func int32 pow : int32 a, int32 b do:
+ 	equ pow = 1
+	cycle b do:
+		equ pow = pow * a
+	end
+end
+
+HOME:
+	init int32 A
+	init int32 B
+
+HEND
+
+
+
+# code/from 3 = "tert"

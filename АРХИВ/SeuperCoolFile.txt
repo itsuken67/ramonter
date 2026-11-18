@@ -1,0 +1,94 @@
+org 7c00h
+
+start:
+cli
+xor ax, ax
+mov ds, ax
+mov es, ax
+mov ss, ax
+mov sp, 07c00h
+sti
+
+mov al, 3
+int 10h
+mov dh, 0
+mov dl, 0
+xor bh, bh
+int 10h
+
+
+push 0x50
+pop es
+
+mov dx, 0 ;disk A, head 0 (dl - disk, dh - head)
+mov ch, 0 ;10bit - cyl, 6bit - sector
+mov cl, 2 ;sector
+mov al, 7
+xor bx, bx
+
+mov ah, 02h
+int 13h
+
+mov dl, 0
+mov dh, 1
+mov bx, 0x0E00
+mov ch, 0
+mov cl, 1
+mov al, 8
+
+mov ah, 02h
+int 13h
+
+
+jmp 0080:0000
+jmp $
+
+fd db 'error!'
+
+times 510 - ($-7c00h) db 0
+db 055h, 0AAh ;ДАЛЬШЕ ЗАГРУЗЧИК НЕ ИДЁТ
+
+jmp home
+
+const_string db 'Ramonter!', 0
+
+length:
+	mov 		eax, [bx + si]
+	mov 		edx, [bx + si+ 4]
+	add 		eax, edx
+	push 	bx
+	mov 		bx, ax
+	mov 		al, [bx]
+	pop	 	bx
+	test 		al, al	
+	jz 		LENGTH_TIL_END
+	LENGTH_TIL:
+	inc 		dword [bx+si+4]
+	mov 		eax, [bx + si]
+	mov 		edx, [bx + si+ 4]
+	add 		eax, edx
+	push 	bx
+	mov 		bx, ax
+	mov 		al, [bx]
+	pop	 	bx
+	test 		al, al	
+	jnz 		LENGTH_TIL
+	LENGTH_TIL_END:
+	mov 		eax, [bx + si+ 4]
+	mov 		[bx + si], eax
+	xor 		eax, eax
+	mov 		[bx + si+ 4], eax
+	ret
+
+home:
+	xor 		ax, ax
+	mov 		ds, ax
+	mov 		si, _heap
+	mov 		bx, 4
+	call 		length
+	hlt
+
+_heap:
+dd 		500h 
+dd 		const_string
+dd 		0

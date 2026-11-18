@@ -1,0 +1,49 @@
+org 7c00h
+
+start:
+cli
+xor ax, ax
+mov ds, ax
+mov es, ax
+mov ss, ax
+mov sp, 07c00h
+sti
+
+mov al, 3
+int 10h
+mov dh, 0
+mov dl, 0
+xor bh, bh
+int 10h
+
+
+push 0x50
+pop es
+
+color = 09h
+
+mov ax, 0xb800
+mov es, ax
+mov si, fd
+xor ax, ax
+mov ds, ax
+
+xor di, di
+_copy:
+	lodsb
+	test al, al
+	jz _copy_stop
+	stosb
+	mov al, color
+	stosb
+	jmp _copy
+_copy_stop:
+
+
+hlt
+jmp $
+
+fd db 'error!', 0
+
+times 510 - ($-7c00h) db 0
+db 055h, 0AAh ;ДАЛЬШЕ ЗАГРУЗЧИК НЕ ИДЁТ

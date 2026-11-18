@@ -1,0 +1,124 @@
+debug:
+	mov eax, 0AAAAAAAAh
+	mov ebx, 0BBBBBBBBh
+	mov ecx, 0CCCCCCCCh
+	mov edx, 0DDDDDDDDh
+	push eax
+	mov ax, 50h 
+	mov ds, ax
+	mov eax, 09h ;ds:si = 0050:0009
+	push eax
+	pop esi
+	pop eax
+		;mov bx, 16
+		;div bl ;убираем первый байт и записываем в DS
+		;mov ah, bl
+		;xor ah, ah
+		;mov ds, ax
+		;mov si, bx ;а остаток в si
+		;pop ax
+		;pop bx
+		;push ds
+		;xor ax, ax
+		;mov ds, ax
+
+	printDEB str_EAXt, 4Fh, 52, 15
+	
+	printDEB str_EBXt, 4Fh, 52, 16
+	printDEB str_ECXt, 4Fh, 52, 17
+	printDEB str_EDXt, 4Fh, 52, 18
+	printDEB str_ESIt, 4Fh, 52, 19
+	printDEB str_DSt, 4Fh, 52, 20
+	printDEB str_0x, 1Fh, 56, 15
+	printDEB str_0x, 1Fh, 56, 16
+	printDEB str_0x, 1Fh, 56, 17
+	printDEB str_0x, 1Fh, 56, 18
+	printDEB str_0x, 1Fh, 56, 19
+	printDEB str_0x, 1Fh, 56, 20
+	REGtoHEXsymbs eax, str_EAX
+	REGtoHEXsymbs ebx, str_EBX
+	REGtoHEXsymbs ecx, str_ECX
+	REGtoHEXsymbs edx, str_EDX
+	REGtoHEXsymbs esi, str_ESI
+	word_to_hex ds, str_DS
+	print str_EAX, 1Fh, 58, 15
+	call WaitForKey
+	print str_EBX, 1Fh, 58, 16
+	print str_ECX, 1Fh, 58, 17
+	print str_EDX, 1Fh, 58, 18
+	print str_ESI, 1Fh, 58, 19
+	print str_DS, 1Fh, 58, 20
+
+	
+	
+
+	mov al, [ds:si]
+	mov [cmd], al
+	call WaitForKey
+	
+	mov [TEAX], eax
+	mov [TESI], esi
+	mov [TECX], ecx
+	mov [TEDI], edi
+	xor ecx, ecx
+	;mov si, CMD_TABLE ;берём первый байт в таблице
+	mov al, [si]
+	mov si, cmd
+	cmp al, [si] ;не наша ли это команда?
+	;je
+	mov cl, [si + 1] ;след байт - кол-во необходимых байтов
+	push cx
+	mov di, cmd ;записываем след байты
+	xor dx, dx
+	mov es, dx
+	mov esi, [TESI]
+
+	call WaitForKey
+
+
+moven_debug:
+	cmp cl, 1
+	je ende
+	inc si
+	inc di
+	mov al, [ds:si] ;добавляем ост байты
+	mov [di], al
+	call WaitForKey
+	
+	loop moven_debug
+ende:
+	mov eax, [TEAX]
+	mov [TESI], esi
+	pop cx
+	mov si, cmd
+	mov di, com_hex
+hexing:
+	byte_to_hex si, di
+	inc si
+	add di, 2
+	loop hexing
+	mov edi, [TEDI]
+	
+	print com_hex, 4Fh, 52, 22
+
+	call WaitForKey
+
+jmp $
+
+	cmd db 0
+	times 6 db 0
+
+	;REGtoHEXsymbs esi, str_ESI
+	;print str_ESI, 1Fh, 58, 19
+	
+	
+
+	
+
+
+
+	
+
+	
+	
+	

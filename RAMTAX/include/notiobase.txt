@@ -1,0 +1,36 @@
+$MEAN WIDTH_T 80
+$MEAN HEIGHT_T 25
+
+func dword len : ptr byte _Str do:
+	init dword i
+	until *(_Str + i) = 0 do:
+		inc i
+	end.
+	equ len = i
+end.
+		
+func noth printSymb : dword pos, byte Symb, byte COL do:
+	init ptr byte es = 0xB8000
+	init word whole
+	equ whole = (COL << 8) + Symb
+	equ es = es + 2 * pos
+	equ *es = whole
+end.
+
+func noth printe : ptr word x, ptr word y, ptr byte Str, byte COL do:
+	init dword pos = (*y) * WIDTH_T + (*x)
+	init dword i
+	until i = len {Str} do:
+		printSymb {pos + i, 3, COL}
+		inc i
+		inc *x
+		if *x > (WIDTH_T - 1) do:
+			inc *y
+			equ *x = 0
+		end.
+	end.
+end.
+
+#func noth printo : dword Str do:
+#	printe {&Xcur, &Ycur, Str, 0x08}
+#end.
